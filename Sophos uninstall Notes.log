@@ -1,0 +1,145 @@
+Results of client review:
+
+
+The order in which the endpoint components are removed is important.  Therefore reorder your uninstall strings (that you extracted from the registry editor) as shown below.
+1. Sophos Patch Agent
+2. Sophos Compliance Agent (NAC)
+3. Sophos Network Threat Protection (NTP)
+4. Sophos System Protection (SSP)
+5. Sophos Client Firewall (SCF)
+6. Sophos Anti-Virus (SAV)
+7. Sophos Exploit Prevention (SEP)
+8. Sophos Remote Management System (RMS)
+9. Sophos Management Communication System (MCS)
+10. Sophos AutoUpdate (SAU)
+11. Sophos Endpoint Defense (SED)
+
+From <https://community.sophos.com/kb/en-us/109668> 
+
+
+
+***The only one it did not pick up is Sophos Endpoint Defense***
+
+
+
+IdentifyingNumber : {AFBCA1B9-496C-4AE6-98AE-3EA1CFF65C54}
+Name              : Sophos AutoUpdate
+Vendor            : Sophos Limited
+Version           : 5.11.206
+Caption           : Sophos AutoUpdate
+
+IdentifyingNumber : {FED1005D-CBC8-45D5-A288-FFC7BB304121}
+Name              : Sophos Remote Management System
+Vendor            : Sophos Limited
+Version           : 4.1.1
+Caption           : Sophos Remote Management System
+
+IdentifyingNumber : {6654537D-935E-41C0-A18A-C55C2BF77B7E}
+Name              : Sophos Anti-Virus
+Vendor            : Sophos Limited
+Version           : 10.8.1.316
+Caption           : Sophos Anti-Virus
+
+IdentifyingNumber : {1093B57D-A613-47F3-90CF-0FD5C5DCFFE6}
+Name              : Sophos System Protection
+Vendor            : Sophos Limited
+Version           : 1.3.1
+Caption           : Sophos System Protection
+
+IdentifyingNumber : {5565E71F-091B-42B8-8514-7E8944860BFD}
+Name              : Sophos Patch Agent
+Vendor            : Sophos Limited
+Version           : 1.0.311.1
+Caption           : Sophos Patch Agent
+
+IdentifyingNumber : {66967E5F-43E8-4402-87A4-04685EE5C2CB}
+Name              : Sophos Network Threat Protection
+Vendor            : Sophos Limited
+Version           : 1.2.2.50
+Caption           : Sophos Network Threat Protection
+
+
+
+
+//64-bit
+//Endpoint Defense
+if {exists folder “C:\Program Files\Sophos\Endpoint Defense”}
+waithidden “C:\Program Files\Sophos\Endpoint Defense\uninstall.exe” /quiet
+delete folder “C:\Program Files\Sophos\Endpoint Defense”
+
+//System Protection
+elseif {exists folder “C:\Program Files (x86)\Sophos\Sophos System Protection”}
+waithidden MsiExec.exe /X{{1093B57D-A613-47F3-90CF-0FD5C5DCFFE6} /quiet /norestart
+delete folder “C:\Program Files (x86)\Sophos\Sophos System Protection”
+
+//AutoUpdate
+elseif {exists folder “C:\Program Files (x86)\Sophos\AutoUpdate”}
+waithidden MsiExec.exe /X{{65323B2D-83D4-470D-A209-D769DB30BBDB} /quiet /norestart
+delete folder “C:\Program Files (x86)\Sophos\AutoUpdate”
+
+//RemoteManagement
+elseif {exists folder “C:\Program Files (x86)\Sophos\Remote Management System”}
+waithidden MsiExec.exe /X{{FED1005D-CBC8-45D5-A288-FFC7BB304121} /quiet /norestart
+delete folder “C:\Program Files (x86)\Sophos\Remote Management System”
+
+//Anti Virus
+elseif {exists folder “C:\Program Files (x86)\Sophos\Sophos Anti-Virus”}
+waithidden MsiExec.exe /X{{65323B2D-83D4-470D-A209-D769DB30BBDB} /quiet /norestart
+delete folder “C:\Program Files (x86)\Sophos\Sophos Anti-Virus”
+
+//Network Threat
+elseif {exists folder “C:\Program Files\Sophos\Sophos Network Threat Protection”}
+waithidden MsiExec.exe /X{{66967E5F-43E8-4402-87A4-04685EE5C2CB} /quiet /norestart
+delete folder “C:\Program Files\Sophos\Sophos Network Threat Protection”
+
+Else
+dos echo "nothing"
+endif
+
+//Delete Sophos Directory
+delete folder "C:\Program Files\Sophos"
+delete folder “C:\Program Files (x86)\Sophos”
+
+
+/Add Endpoint Defense if it’s installed
+if {exists file “uninstall.exe” of folder “C:\Program Files\Sophos\Endpoint Defense”}
+delete __appendfile
+delete c:\temp\uninstallSophos.bat
+appendfile net stop "Sophos AutoUpdate Service"
+appendfile “C:\Program Files\Sophos\Endpoint Defense\uninstall.exe” /quiet
+endif
+
+//Add the rest of the Sophos components if they exist
+if {exists (keys whose (value “DisplayName” of it as string contains “Sophos” AND name of it does not contain “Sophos”) of key “HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall” of x64 registry) OR exists (keys whose (value “DisplayName” of it as string contains “Sophos” AND name of it does not contain “Sophos”) of key “HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall” of x32 registry)}
+appendfile {concatenation “%0d%0a” of (“msiexec /X " & name of it & " /qn /LV %22C:\temp" & (value “DisplayName” of it) & " Uninstall.log%22") of (keys whose (value “DisplayName” of it as string contains “Sophos” AND name of it does not contain “Sophos”) of key “HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall” of x64 registry)}
+appendfile {concatenation “%0d%0a” of ("msiexec /X " & name of it & " /qn /LV %22C:\temp” & (value “DisplayName” of it) & " Uninstall.log%22"") of (keys whose (value “DisplayName” of it as string contains “Sophos” AND name of it does not contain “Sophos”) of key “HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall” of x32 registry)}
+copy __appendfile c:\temp\uninstallSophos.bat
+waithidden C:\temp\uninstallSophos.bat
+endif
+
+//Clean up
+if {exists pathname of folder “Sophos” of program files x32 folder}
+folder delete {pathname of folder “Sophos” of program files x32 folder}
+endif
+if {exists pathname of folder “Sophos” of program files x64 folder}
+folder delete {pathname of folder “Sophos” of program files x64 folder}
+endif
+if {exists file “C:\temp\uninstallSophos.bat”}
+delete C:\temp\uninstallSophos.bat
+endif
+
+action requires restart
+
+
+
+From <https://forum.bigfix.com/t/sophos-uninstall/23085> 
+
+
+
+https://forum.bigfix.com/t/sophos-uninstall/23085
+
+https://github.com/cesanetwan/sophos-uninstall-mcafee-install/blob/master/sophos-remove-mcafee-install.ps1
+
+https://gist.github.com/Coopeh/8470068
+
+https://gist.github.com/ion-storm/a9f97f54cdd6cd83d2217bb41c6b297c
